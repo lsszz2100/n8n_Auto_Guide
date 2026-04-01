@@ -24,7 +24,7 @@
   - [03-03. 핵심 노드 탐색](pages/03-03-core-nodes.md)
   - [03-04. JSON과 데이터 구조 이해](pages/03-04-json-data.md)
   - [03-05. 표현식(Expressions) 마스터](pages/03-05-expressions.md)
-  - [03-06. Function 노드로 코드 활용](pages/03-06-function-node.md)
+  - [03-06. Code 노드로 코드 활용](pages/03-06-function-node.md)
   - [03-07. HTTP Request 노드로 API 호출](pages/03-07-http-request.md)
   - [03-08. 서드파티 서비스 연동](pages/03-08-integrations.md)
   - [03-09. 3장 핵심 정리](pages/03-09-recap.md)

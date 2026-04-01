@@ -9,7 +9,7 @@ n8n은 주요 AI 제공업체를 모두 지원합니다.
 | 제공업체 | 주요 모델 | 특징 |
 |---------|---------|------|
 | OpenAI | GPT-4o, GPT-4o mini, o1 | 가장 광범위하게 사용, 풍부한 생태계 |
-| Anthropic | Claude 3.5 Sonnet, Claude 3 Haiku | 긴 컨텍스트, 정교한 추론 |
+| Anthropic | Claude Sonnet 4, Claude Haiku 4 | 긴 컨텍스트, 정교한 추론 |
 | Google AI | Gemini 1.5 Pro, Gemini Flash | 멀티모달, 구글 생태계 연동 |
 | Mistral | Mistral Large, Mixtral | 오픈소스 기반, 비용 효율 |
 | Ollama | Llama 3, Mistral 등 | 완전 로컬 실행, 무료 |
@@ -79,9 +79,9 @@ GPT-3.5 Turbo    → 가장 저렴, 단순 작업
 ### Anthropic 모델 선택 가이드
 
 ```
-Claude 3.5 Sonnet   → 최고 성능, 긴 문서 처리 최적, 속도 양호
-Claude 3.5 Haiku    → 가장 빠르고 저렴, 단순 작업
-Claude 3 Opus       → 이전 최고 성능 모델 (현재는 Sonnet 권장)
+Claude Opus 4       → 최고 성능, 복잡한 추론
+Claude Sonnet 4     → 균형 잡힌 성능/비용, 일반 작업 권장
+Claude Haiku 4      → 가장 빠르고 저렴, 단순 작업
 ```
 
 **Claude의 강점:**
@@ -167,9 +167,9 @@ phi3:mini      → 초경량, 4GB RAM으로 가능
 | 작업 유형 | 추천 모델 | 이유 |
 |---------|---------|------|
 | 일반 텍스트 처리 | GPT-4o mini | 속도/비용/성능 균형 |
-| 긴 문서 요약 | Claude 3.5 Sonnet | 200K 컨텍스트 |
+| 긴 문서 요약 | Claude Sonnet 4 | 200K 컨텍스트 |
 | 이미지 분석 | GPT-4o 또는 Gemini 1.5 Pro | 멀티모달 |
-| 코드 생성/분석 | Claude 3.5 Sonnet | 코딩 성능 우수 |
+| 코드 생성/분석 | Claude Sonnet 4 | 코딩 성능 우수 |
 | 대량 처리 (비용 중시) | GPT-4o mini 또는 Gemini Flash | 가장 저렴 |
 | 보안 민감 데이터 | Ollama (로컬) | 외부 전송 없음 |
 | 복잡한 추론 | o1-mini | 추론 특화 |
@@ -179,7 +179,7 @@ phi3:mini      → 초경량, 4GB RAM으로 가능
 ```
        낮은 비용 ←─────────────────→ 높은 비용
            │                              │
-높은 성능  │  Claude 3.5 Sonnet    GPT-4o │
+높은 성능  │  Claude Sonnet 4      GPT-4o │
            │  Gemini 1.5 Pro              │
            │                              │
 낮은 성능  │  GPT-4o mini         o1      │
@@ -202,18 +202,18 @@ phi3:mini      → 초경량, 4GB RAM으로 가능
 비용 = (입력 토큰 + 출력 토큰) × 단가
 ```
 
-### 2. 실제 비용 예시 (2024년 기준)
+### 2. 실제 비용 예시 (참고용, 변동 가능)
 
 ```
 GPT-4o:
-  입력: $5.00 / 1M 토큰
-  출력: $15.00 / 1M 토큰
+  입력: $2.50 / 1M 토큰
+  출력: $10.00 / 1M 토큰
 
 GPT-4o mini:
   입력: $0.15 / 1M 토큰
   출력: $0.60 / 1M 토큰
 
-Claude 3.5 Sonnet:
+Claude Sonnet 4:
   입력: $3.00 / 1M 토큰
   출력: $15.00 / 1M 토큰
 ```
@@ -224,7 +224,7 @@ Claude 3.5 Sonnet:
 ```
 단순 분류/추출 → GPT-4o mini (저렴)
 복잡한 분석   → GPT-4o (중간)
-창의적 작업   → Claude 3.5 Sonnet (필요할 때만)
+창의적 작업   → Claude Sonnet 4 (필요할 때만)
 ```
 
 **전략 2: 프롬프트 최적화**
@@ -265,7 +265,7 @@ n8n에서는 여러 AI를 함께 사용할 수 있습니다.
 [GPT-4o mini로 1차 분류]  (저렴한 비용)
      ↓
 [일반 문의] → [Rule-based 처리]
-[복잡한 문의] → [Claude 3.5 Sonnet으로 정교한 답변]
+[복잡한 문의] → [Claude Sonnet 4로 정교한 답변]
 [이미지 포함] → [GPT-4o로 이미지+텍스트 처리]
 ```
 
@@ -275,7 +275,7 @@ n8n에서는 여러 AI를 함께 사용할 수 있습니다.
 
 - OpenAI, Anthropic, Google AI 모두 n8n Credentials에서 간단히 연동
 - 일반 작업: GPT-4o mini 또는 Gemini Flash로 비용 절약
-- 긴 문서: Claude 3.5 Sonnet의 200K 컨텍스트 활용
+- 긴 문서: Claude Sonnet 4의 200K 컨텍스트 활용
 - 보안 데이터: Ollama로 로컬 실행
 - 토큰 = 비용이므로 프롬프트를 간결하게, 작업에 맞는 모델 선택
 

@@ -5,9 +5,9 @@
 ## npm 설치 방식의 특징
 
 npm(Node Package Manager)으로 n8n을 설치하는 방식은:
-- **장점**: 가장 간단한 로컬 설치, 빠른 시작
-- **단점**: Node.js 버전 관리가 필요, 운영 환경에는 부적합
-- **추천 사용**: 로컬 개발, 학습, 테스트
+- 장점: 가장 간단한 로컬 설치, 빠른 시작
+- 단점: Node.js 버전 관리가 필요, 운영 환경에는 부적합
+- 추천 사용: 로컬 개발, 학습, 테스트
 
 ---
 
@@ -15,9 +15,9 @@ npm(Node Package Manager)으로 n8n을 설치하는 방식은:
 
 ### Node.js 설치
 
-n8n은 **Node.js 18.x 이상**이 필요합니다.
+n8n은 Node.js 18.x 이상이 필요합니다.
 
-**nvm(Node Version Manager) 사용 권장:**
+nvm(Node Version Manager) 사용 권장:
 
 ```bash
 # macOS / Linux: nvm 설치
@@ -35,7 +35,7 @@ node --version  # v20.x.x
 npm --version   # 10.x.x
 ```
 
-**Windows:**
+Windows:
 1. `nodejs.org` 접속
 2. LTS 버전 다운로드 및 설치
 3. 명령 프롬프트(CMD)에서 `node --version` 확인
@@ -52,7 +52,7 @@ npm install n8n -g
 n8n --version
 ```
 
-> **Note**: 설치에 2~5분 정도 소요됩니다.
+> Note: 설치에 2~5분 정도 소요됩니다.
 
 ---
 
@@ -149,7 +149,7 @@ npm update -g n8n
 npm install -g n8n@1.x.x
 ```
 
-> **주의**: 업데이트 전에 워크플로우를 반드시 백업하세요!
+> 주의: 업데이트 전에 워크플로우를 반드시 백업하세요!
 
 ---
 
@@ -157,8 +157,8 @@ npm install -g n8n@1.x.x
 
 npm으로 설치한 n8n의 데이터는 다음 위치에 저장됩니다:
 
-- **macOS/Linux**: `~/.n8n/`
-- **Windows**: `C:\Users\사용자명\.n8n\`
+- macOS/Linux: `~/.n8n/`
+- Windows: `C:\Users\사용자명\.n8n\`
 
 이 폴더에는:
 - `database.sqlite`: 워크플로우, 크리덴셜, 실행 기록

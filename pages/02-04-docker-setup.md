@@ -4,7 +4,7 @@
 
 ## Docker란?
 
-**Docker**는 애플리케이션을 컨테이너라는 격리된 환경에서 실행하는 기술입니다.
+Docker는 애플리케이션을 컨테이너라는 격리된 환경에서 실행하는 기술입니다.
 
 n8n을 Docker로 설치하면:
 - 환경 충돌 없이 깔끔하게 설치
@@ -18,16 +18,16 @@ n8n을 Docker로 설치하면:
 
 ### Docker 설치
 
-**Windows:**
+Windows:
 1. `docs.docker.com/desktop/install/windows-install/` 접속
 2. Docker Desktop for Windows 다운로드 및 설치
 3. WSL2 백엔드 활성화 (설치 과정에서 안내됨)
 
-**macOS:**
+macOS:
 1. `docs.docker.com/desktop/install/mac-install/` 접속
 2. Apple Silicon(M1/M2/M3) 또는 Intel 버전 선택 후 설치
 
-**Ubuntu/Debian Linux:**
+Ubuntu/Debian Linux:
 ```bash
 # Docker 공식 설치 스크립트
 curl -fsSL https://get.docker.com -o get-docker.sh

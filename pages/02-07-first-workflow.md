@@ -6,7 +6,7 @@
 
 이번 레슨에서는 실제로 작동하는 첫 번째 워크플로우를 만들어 봅니다.
 
-**만들 것**: 버튼을 누르면 현재 시간과 환영 메시지가 담긴 데이터를 생성하는 워크플로우
+만들 것: 버튼을 누르면 현재 시간과 환영 메시지가 담긴 데이터를 생성하는 워크플로우
 
 (이 예제는 외부 서비스 연동 없이 n8n 자체 기능만 사용하므로 누구든 즉시 따라할 수 있습니다.)
 
@@ -26,8 +26,8 @@
 
 ### STEP 1: 새 워크플로우 만들기
 
-1. n8n 접속 후 **"+ New Workflow"** 클릭
-2. 상단 이름 클릭 → **"나의 첫 번째 워크플로우"**로 변경
+1. n8n 접속 후 "+ New Workflow" 클릭
+2. 상단 이름 클릭 → "나의 첫 번째 워크플로우"로 변경
 3. `Ctrl + S`로 저장
 
 ---
@@ -36,11 +36,11 @@
 
 모든 워크플로우는 트리거로 시작합니다.
 
-1. 캔버스 중앙에 **"Add first step"** 버튼 클릭
-2. 검색창에 **"manual"** 입력
-3. **"Manual Trigger"** 선택
+1. 캔버스 중앙에 "Add first step" 버튼 클릭
+2. 검색창에 "manual" 입력
+3. "Manual Trigger" 선택
 
-**Manual Trigger**는 버튼을 클릭하면 워크플로우를 시작하는 트리거입니다. 테스트와 학습에 매우 유용합니다.
+Manual Trigger는 버튼을 클릭하면 워크플로우를 시작하는 트리거입니다. 테스트와 학습에 매우 유용합니다.
 
 ```
 [⚡ Manual Trigger]
@@ -52,15 +52,15 @@
 
 데이터를 만들고 변환하는 핵심 노드입니다.
 
-1. Manual Trigger의 **"+"** 버튼 클릭
-2. 검색창에 **"edit fields"** 입력
-3. **"Edit Fields (Set)"** 선택
+1. Manual Trigger의 "+" 버튼 클릭
+2. 검색창에 "edit fields" 입력
+3. "Edit Fields (Set)" 선택
 
 #### 노드 설정
 
-**Mode**: Manual Mapping 선택
+Mode: Manual Mapping 선택
 
-**필드 추가** ("+Add field" 클릭 3회):
+필드 추가 ("+Add field" 클릭 3회):
 
 | 필드명 | 타입 | 값 |
 |--------|------|-----|
@@ -80,8 +80,8 @@
 
 JavaScript로 데이터를 가공합니다.
 
-1. Edit Fields의 **"+"** 클릭
-2. **"Code"** 검색 후 **"Code"** 노드 선택
+1. Edit Fields의 "+" 클릭
+2. "Code" 검색 후 "Code" 노드 선택
 
 #### 코드 입력
 
@@ -115,8 +115,8 @@ return [{
 
 ### STEP 5: 워크플로우 실행하기
 
-1. 상단의 **"Execute Workflow"** 버튼 클릭 (또는 `Ctrl + Enter`)
-2. Manual Trigger 노드에 **"Execute step"** 버튼이 나타남
+1. 상단의 "Execute Workflow" 버튼 클릭 (또는 `Ctrl + Enter`)
+2. Manual Trigger 노드에 "Execute step" 버튼이 나타남
 3. 클릭!
 
 ---
@@ -134,7 +134,7 @@ Code 노드를 클릭하면 Output 탭에서 결과를 볼 수 있습니다:
 }
 ```
 
-🎉 **축하합니다! 첫 번째 워크플로우가 완성되었습니다!**
+축하합니다! 첫 번째 워크플로우가 완성되었습니다!
 
 ---
 
@@ -150,12 +150,12 @@ Code 노드를 클릭하면 Output 탭에서 결과를 볼 수 있습니다:
 
 #### Webhook 노드 설정
 
-- **HTTP Method**: GET
-- **Path**: `greeting` (URL 경로)
-- **Response Mode**: Immediately
+- HTTP Method: GET
+- Path: `greeting` (URL 경로)
+- Response Mode: Immediately
 
 4. Webhook 노드와 Edit Fields 연결
-5. 워크플로우 저장 후 **활성화(토글 스위치 ON)**
+5. 워크플로우 저장 후 활성화(토글 스위치 ON)
 
 #### 테스트 URL 복사
 
@@ -171,17 +171,17 @@ http://localhost:5678/webhook-test/greeting
 ## 워크플로우 저장 및 공유
 
 ### 내보내기 (Export)
-1. 편집기 우측 상단 **"..."** 메뉴
-2. **"Download"** 클릭
+1. 편집기 우측 상단 "..." 메뉴
+2. "Download" 클릭
 3. JSON 파일로 저장됨
 
 ### 가져오기 (Import)
-1. 대시보드에서 **"Import from file"**
-2. 또는 편집기에서 **"..."** → **"Import"**
+1. 대시보드에서 "Import from file"
+2. 또는 편집기에서 "..." → "Import"
 
 ### 워크플로우 복제
 1. 워크플로우 목록에서 우클릭
-2. **"Duplicate"** 선택
+2. "Duplicate" 선택
 
 ---
 

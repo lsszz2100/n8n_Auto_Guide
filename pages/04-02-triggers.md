@@ -4,7 +4,7 @@
 
 ## 트리거 고급 활용
 
-3장에서 트리거의 종류를 배웠다면, 이번 레슨에서는 **실전에서 어떻게 활용하는지** 상세히 다룹니다.
+3장에서 트리거의 종류를 배웠다면, 이번 레슨에서는 실전에서 어떻게 활용하는지 상세히 다룹니다.
 
 ---
 
@@ -57,7 +57,7 @@ Schedule: 0 9 * * 1-5 (평일 오전 9시)
 https://your-n8n.com/webhook/{path}
 ```
 
-- **path**: 자유롭게 설정 가능 (영문, 숫자, 하이픈)
+- path: 자유롭게 설정 가능 (영문, 숫자, 하이픈)
 - 각 워크플로우마다 다른 path 사용 권장
 
 ### Webhook 보안
@@ -88,9 +88,9 @@ Webhook 노드 설정:
 ### Webhook 응답 커스터마이즈
 
 Webhook 노드 설정:
-- **Response Mode**: Last Node (마지막 노드의 결과를 응답으로 반환)
-- **Response Code**: HTTP 상태 코드
-- **Response Data**: 반환할 데이터
+- Response Mode: Last Node (마지막 노드의 결과를 응답으로 반환)
+- Response Code: HTTP 상태 코드
+- Response Data: 반환할 데이터
 
 ```javascript
 // Respond to Webhook 노드에서 커스텀 응답
@@ -133,7 +133,7 @@ Gmail Trigger (5분 폴링):
 Polling → Webhook으로 바꾸면:
 - 이메일이 실제로 왔을 때만 실행
 - 하루 20통 이메일 기준: 월 600회 (vs 8,640회)
-- **93% 절약**
+- 93% 절약
 
 ---
 

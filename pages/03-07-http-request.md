@@ -4,10 +4,10 @@
 
 ## HTTP Request 노드란?
 
-**HTTP Request 노드**는 n8n에서 가장 강력하고 다재다능한 노드 중 하나입니다.
+HTTP Request 노드는 n8n에서 가장 강력하고 다재다능한 노드 중 하나입니다.
 
 전용 노드가 없는 모든 API를 이 노드로 호출할 수 있습니다.
-즉, **세상의 모든 API를 n8n에서 사용 가능하게 만드는** 만능 도구입니다.
+즉, 세상의 모든 API를 n8n에서 사용 가능하게 만드는 만능 도구입니다.
 
 ---
 
@@ -41,7 +41,7 @@ https://api.example.com/users/{{ $json.userId }}
 
 ### API Key 방식
 
-**Header에 추가:**
+Header에 추가:
 ```
 Authorization: Bearer {API_KEY}
 X-API-Key: {API_KEY}
@@ -51,7 +51,7 @@ X-API-Key: {API_KEY}
 - Authentication: None
 - Headers: `Authorization` = `Bearer {{ $credentials.apiKey }}`
 
-**쿼리 파라미터에 추가:**
+쿼리 파라미터에 추가:
 ```
 https://api.example.com/data?api_key=YOUR_KEY
 ```
@@ -183,7 +183,7 @@ Body (Form Data):
 
 HTTP Request 노드의 응답은 자동으로 JSON 파싱됩니다.
 
-**응답 코드 확인:**
+응답 코드 확인:
 - Options → Include Response Headers and Status
 
 응답 구조:

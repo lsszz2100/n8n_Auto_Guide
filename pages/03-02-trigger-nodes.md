@@ -16,7 +16,7 @@
 ## 트리거 노드 총정리
 
 ### 1. Manual Trigger
-**언제 사용**: 테스트, 수동 실행이 필요한 경우
+언제 사용: 테스트, 수동 실행이 필요한 경우
 
 ```
 사용 예시: 월말 보고서를 수동으로 생성할 때
@@ -29,7 +29,7 @@
 ---
 
 ### 2. Schedule Trigger (Cron)
-**언제 사용**: 정기적으로 자동 실행할 때
+언제 사용: 정기적으로 자동 실행할 때
 
 ```
 사용 예시:
@@ -40,7 +40,7 @@
 
 #### 설정 방법
 
-**간단 모드**: 분/시간/일/주/월 단위로 선택
+간단 모드: 분/시간/일/주/월 단위로 선택
 
 | 설정 | 실행 빈도 |
 |------|-----------|
@@ -50,7 +50,7 @@
 | Every Week | 매주 지정 요일 |
 | Every Month | 매월 지정 날짜 |
 
-**Cron 표현식 모드**: 더 세밀한 제어
+Cron 표현식 모드: 더 세밀한 제어
 ```
 ┌──── 분 (0-59)
 │ ┌──── 시 (0-23)
@@ -70,7 +70,7 @@
 ---
 
 ### 3. Webhook Trigger
-**언제 사용**: 외부 서비스에서 n8n을 직접 호출할 때
+언제 사용: 외부 서비스에서 n8n을 직접 호출할 때
 
 ```
 사용 예시:
@@ -95,12 +95,12 @@
 프로덕션 URL: https://your-n8n.com/webhook/order-complete
 ```
 
-> **중요**: 테스트 URL은 워크플로우가 활성화되지 않아도 사용 가능합니다. 프로덕션 URL은 워크플로우를 활성화해야 동작합니다.
+> 중요: 테스트 URL은 워크플로우가 활성화되지 않아도 사용 가능합니다. 프로덕션 URL은 워크플로우를 활성화해야 동작합니다.
 
 ---
 
 ### 4. Email Trigger (IMAP)
-**언제 사용**: 특정 이메일 수신 시 자동화
+언제 사용: 특정 이메일 수신 시 자동화
 
 ```
 사용 예시:
@@ -115,7 +115,7 @@
 - 모니터링할 폴더 (INBOX, SENT 등)
 - 읽음 처리 여부
 
-> **Gmail 사용자**: Gmail Trigger 노드를 별도로 사용하는 것이 더 편리합니다.
+> Gmail 사용자: Gmail Trigger 노드를 별도로 사용하는 것이 더 편리합니다.
 
 ---
 
@@ -125,16 +125,16 @@
 
 | 노드 | 트리거 이벤트 |
 |------|-------------|
-| **Gmail Trigger** | 새 이메일 수신, 라벨 변경 |
-| **Slack Trigger** | 새 메시지, 멘션, 채널 이벤트 |
-| **Google Sheets Trigger** | 스프레드시트 변경 |
-| **Typeform Trigger** | 폼 제출 |
-| **GitHub Trigger** | PR, 이슈, 커밋 이벤트 |
-| **Stripe Trigger** | 결제, 환불, 구독 이벤트 |
-| **Telegram Trigger** | 새 메시지 수신 |
-| **Twitter/X Trigger** | 멘션, 트윗 이벤트 |
-| **Notion Trigger** | 데이터베이스 변경 |
-| **Airtable Trigger** | 레코드 생성/수정 |
+| Gmail Trigger | 새 이메일 수신, 라벨 변경 |
+| Slack Trigger | 새 메시지, 멘션, 채널 이벤트 |
+| Google Sheets Trigger | 스프레드시트 변경 |
+| Typeform Trigger | 폼 제출 |
+| GitHub Trigger | PR, 이슈, 커밋 이벤트 |
+| Stripe Trigger | 결제, 환불, 구독 이벤트 |
+| Telegram Trigger | 새 메시지 수신 |
+| Twitter/X Trigger | 멘션, 트윗 이벤트 |
+| Notion Trigger | 데이터베이스 변경 |
+| Airtable Trigger | 레코드 생성/수정 |
 
 ---
 
@@ -143,7 +143,7 @@
 트리거 방식에는 두 가지 패턴이 있습니다:
 
 ### Polling (폴링)
-n8n이 **주기적으로 서비스를 확인**하는 방식
+n8n이 주기적으로 서비스를 확인하는 방식
 
 ```
 n8n → (5분마다) "새 이메일 있어?" → Gmail
@@ -154,10 +154,10 @@ Gmail → "있음! 여기 있어" (가끔)
 - 장점: 설정이 간단
 - 단점: 실시간이 아님, 실행 횟수 소비, 서버 부하
 
-**사용 예**: Gmail Trigger, Google Sheets Trigger
+사용 예: Gmail Trigger, Google Sheets Trigger
 
 ### Webhook (웹훅)
-서비스가 이벤트 발생 시 **n8n에 직접 알려주는** 방식
+서비스가 이벤트 발생 시 n8n에 직접 알려주는 방식
 
 ```
 Gmail → (새 이메일 도착 즉시) → n8n에 POST 요청 전송
@@ -166,7 +166,7 @@ Gmail → (새 이메일 도착 즉시) → n8n에 POST 요청 전송
 - 장점: 실시간, 효율적, 실행 횟수 절약
 - 단점: 서비스가 Webhook을 지원해야 함
 
-**사용 예**: Stripe Webhook, GitHub Webhook, 직접 만든 폼
+사용 예: Stripe Webhook, GitHub Webhook, 직접 만든 폼
 
 ---
 
