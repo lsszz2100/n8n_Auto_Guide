@@ -1,4 +1,4 @@
-# n8n AI 자동화 완전 가이드
+# n8n AI 자동화 가이드
 
 > 초보자부터 고급자까지, n8n으로 업무 자동화를 마스터하는 실전 가이드
 
@@ -35,4 +35,4 @@
 
 ---
 
-wikidocs.net에서 온라인으로 읽기: [n8n AI 자동화 완전 가이드](https://wikidocs.net)
+wikidocs.net에서 온라인으로 읽기: [n8n AI 자동화 가이드](https://wikidocs.net)
