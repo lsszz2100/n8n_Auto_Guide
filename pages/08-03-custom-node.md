@@ -353,13 +353,164 @@ async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
 ---
 
+## 동적 옵션 로딩 (loadOptions)
+
+드롭다운 항목을 API에서 동적으로 불러오는 기능:
+
+```typescript
+// 노드 description에 추가
+methods = {
+  loadOptions: {
+    // API에서 데이터베이스 목록 가져오기
+    async getDatabases(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+      const credentials = await this.getCredentials('myServiceApi');
+
+      const response = await this.helpers.request({
+        method: 'GET',
+        url: `${credentials.baseUrl}/databases`,
+        headers: { Authorization: `Bearer ${credentials.apiKey}` },
+        json: true,
+      });
+
+      return response.databases.map((db: { id: string; name: string }) => ({
+        name: db.name,
+        value: db.id,
+      }));
+    },
+  },
+};
+
+// properties에서 사용
+{
+  displayName: '데이터베이스',
+  name: 'databaseId',
+  type: 'options',
+  typeOptions: {
+    loadOptionsMethod: 'getDatabases',  // 위에서 정의한 메서드명
+  },
+  default: '',
+  description: 'API에서 불러온 데이터베이스 목록',
+}
+```
+
+---
+
+## 에러 처리
+
+노드 내에서 에러를 올바르게 처리하는 방법:
+
+```typescript
+async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+  const items = this.getInputData();
+  const returnData: INodeExecutionData[] = [];
+
+  for (let i = 0; i < items.length; i++) {
+    try {
+      const operation = this.getNodeParameter('operation', i) as string;
+
+      // continueOnFail 옵션 지원
+      const response = await this.helpers.request({ ... });
+      returnData.push({ json: response });
+
+    } catch (error) {
+      if (this.continueOnFail()) {
+        // 에러를 데이터로 반환 (워크플로우 계속 실행)
+        returnData.push({
+          json: {
+            error: error.message,
+            statusCode: error.statusCode,
+          },
+          error,  // n8n 에러 UI에 표시
+        });
+        continue;
+      }
+      // continueOnFail이 false면 에러를 위로 던짐
+      throw new NodeOperationError(this.getNode(), error, { itemIndex: i });
+    }
+  }
+
+  return [returnData];
+}
+```
+
+---
+
+## 노드 테스트
+
+커스텀 노드의 단위 테스트 작성:
+
+```typescript
+// nodes/MyService/__tests__/MyService.test.ts
+import { MyService } from '../MyService.node';
+
+// n8n 실행 컨텍스트 모킹
+const mockExecuteFunctions = {
+  getInputData: () => [{ json: { id: '123' }, pairedItem: { item: 0 } }],
+  getNodeParameter: (name: string) => {
+    const params: Record<string, string> = {
+      operation: 'get',
+      itemId: 'test-item-123',
+    };
+    return params[name];
+  },
+  getCredentials: async () => ({
+    apiKey: 'test-api-key',
+    baseUrl: 'https://api.example.com',
+  }),
+  helpers: {
+    request: jest.fn().mockResolvedValue({ id: 'test-item-123', name: '테스트 항목' }),
+  },
+  continueOnFail: () => false,
+  getNode: () => ({ name: 'MyService' }),
+};
+
+describe('MyService 노드', () => {
+  it('get 작업이 올바른 항목을 반환한다', async () => {
+    const node = new MyService();
+    const result = await node.execute.call(mockExecuteFunctions as any);
+
+    expect(result[0][0].json).toEqual({
+      id: 'test-item-123',
+      name: '테스트 항목',
+    });
+  });
+
+  it('API 에러 시 continueOnFail이 활성화되면 에러를 데이터로 반환한다', async () => {
+    const errorMock = {
+      ...mockExecuteFunctions,
+      helpers: {
+        request: jest.fn().mockRejectedValue(new Error('API 연결 실패')),
+      },
+      continueOnFail: () => true,
+    };
+
+    const node = new MyService();
+    const result = await node.execute.call(errorMock as any);
+
+    expect(result[0][0].json.error).toBe('API 연결 실패');
+  });
+});
+```
+
+```bash
+# 테스트 실행
+npm test
+
+# 커버리지 포함
+npm test -- --coverage
+```
+
+---
+
 ## 핵심 요약
 
 - 커스텀 노드 = TypeScript로 작성하는 n8n 확장 기능
 - `n8n-node-dev` 도구로 프로젝트 스캐폴딩
 - 노드 속성 → UI 설정, execute() → 실제 로직
+- loadOptions로 API에서 드롭다운 항목 동적 로딩
+- continueOnFail() 체크로 n8n 에러 처리 컨벤션 준수
+- jest로 단위 테스트 작성하여 노드 동작 검증
 - 크리덴셜 분리로 API 키 안전하게 관리
 - npm 패키지로 배포하여 팀 또는 커뮤니티와 공유
-- Docker 볼륨 마운트로 자체 호스팅 환경에 설치
 
-**다음 레슨**: n8n 성능 최적화로 대용량 데이터를 처리합니다.
+다음 레슨: n8n 성능 최적화로 대용량 데이터를 처리합니다.

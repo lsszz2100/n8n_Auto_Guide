@@ -84,7 +84,7 @@ Redis를 사용한 고성능 메모리.
 
 ### 4. Vector Store Memory (의미 기반 검색)
 
-단순 최근 메시지가 아닌, **의미적으로 관련있는** 메시지를 검색합니다.
+단순 최근 메시지가 아닌, 의미적으로 관련있는 메시지를 검색합니다.
 
 ```
 사용자: "지난번에 얘기한 할인 정책이 뭐였지?"
@@ -92,7 +92,30 @@ AI: (수백 개의 메시지 중 '할인'과 관련된 대화를 검색)
     "3개월 전에 말씀하셨던 신규 회원 20% 할인 정책을 말씀하시는 건가요?"
 ```
 
-**사용 예시:** 고객 지원 봇, 장기 프로젝트 관리 어시스턴트
+사용 예시: 고객 지원 봇, 장기 프로젝트 관리 어시스턴트
+
+n8n에서 Vector Store Memory 설정:
+```
+[AI Agent]
+  Memory: Vectorstore Memory
+  Vector Store: Pinecone (또는 Supabase, Qdrant)
+  Embedding Model: OpenAI Embeddings (text-embedding-3-small)
+  Session ID: {{ $json.userId }}
+  Top K: 5    ← 의미적으로 가장 유사한 메시지 5개 검색
+```
+
+Window Buffer Memory vs Vector Store Memory 차이:
+```
+Window Buffer Memory:
+  저장: [메시지1, 메시지2, 메시지3, 메시지4, 메시지5]  ← 최근 5개만
+  검색: 무조건 최근 N개 반환
+
+Vector Store Memory:
+  저장: 모든 메시지를 벡터(숫자 배열)로 변환하여 저장
+  검색: "현재 질문과 의미적으로 가장 유사한" 메시지 반환
+  장점: 100개 메시지 중 딱 관련된 5개만 가져옴
+  단점: Pinecone 등 외부 벡터 DB 필요, 비용 발생
+```
 
 ---
 
@@ -148,14 +171,51 @@ return [{ json: { action: 'chat', ...($json) } }];
 
 메모리가 너무 커지면 API 비용이 증가하고 성능이 저하됩니다.
 
-```javascript
-// Code 노드에서 컨텍스트 요약
-// 메시지가 50개를 초과하면 이전 내용 요약
-const messageCount = await getMessageCount($json.sessionId);
-if (messageCount > 50) {
-  // 요약 API 호출 후 이전 기록 삭제
-}
+Postgres Chat Memory를 사용할 때 오래된 기록을 요약하고 압축하는 패턴:
+
 ```
+[Webhook: 사용자 메시지 수신]
+    ↓
+[Postgres: 현재 세션 메시지 수 조회]
+  SELECT COUNT(*) FROM n8n_chat_memories WHERE session_id = '{{ $json.sessionId }}'
+    ↓
+[IF: 메시지 수 > 50?]
+  ├── True: [컨텍스트 압축 서브 워크플로우 실행]
+  └── False: [AI Agent 바로 실행]
+```
+
+컨텍스트 압축 서브 워크플로우:
+
+```javascript
+// 1단계: 오래된 메시지 20개 가져오기
+// Postgres 노드: SELECT content, role FROM n8n_chat_memories
+//               WHERE session_id = '...' ORDER BY id ASC LIMIT 20
+
+// 2단계: AI로 요약
+const messages = $input.all().map(m => `${m.json.role}: ${m.json.content}`).join('\n');
+
+return [{ json: { toSummarize: messages } }];
+```
+
+```
+[OpenAI: 이전 대화 요약]
+  System: 아래 대화 내용을 핵심 사실 위주로 3-5문장으로 요약하세요.
+          사용자 이름, 중요한 결정 사항, 맥락 유지에 필요한 정보를 우선시하세요.
+  User: {{ $json.toSummarize }}
+    ↓
+[Postgres: 오래된 20개 삭제 후 요약본 1개로 교체]
+  DELETE FROM n8n_chat_memories WHERE session_id = '...' AND id IN (...)
+  INSERT INTO n8n_chat_memories (session_id, role, content) VALUES ('...', 'system', '요약: ...')
+```
+
+메모리 유형별 비용 비교:
+
+| 메모리 유형 | 비용 | 영속성 | 검색 방식 | 적합한 상황 |
+|------------|------|--------|-----------|------------|
+| Window Buffer | 없음 | 재시작 시 초기화 | 최근 N개 | 테스트, 단기 챗 |
+| Postgres | DB 운영비 | 영구 | 최근 N개 | 사용자별 장기 기억 |
+| Redis | Redis 서버비 | TTL 만료 시 삭제 | 최근 N개 | 고성능, 대규모 |
+| Vector Store | 벡터 DB + 임베딩 | 영구 | 의미 유사도 | 대화량이 많은 봇 |
 
 ### 메모리 스키마 설계
 

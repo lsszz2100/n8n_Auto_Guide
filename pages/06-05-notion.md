@@ -584,12 +584,146 @@ return [{
 
 ---
 
+## 페이지 블록 내용 읽기
+
+Notion 페이지의 본문 텍스트(블록)를 가져올 때는 "Get Child Blocks" 작업을 사용합니다.
+
+```
+[Notion: Get Child Blocks]
+설정:
+  Block ID: {{ $json.pageId }}   ← 페이지 ID를 블록 ID로 사용
+```
+
+응답 구조에서 텍스트 추출:
+```javascript
+// Code 노드: 블록 배열에서 순수 텍스트 추출
+const blocks = $input.all();
+
+const textLines = blocks
+  .filter(b => ['paragraph', 'heading_1', 'heading_2', 'heading_3',
+                 'bulleted_list_item', 'numbered_list_item'].includes(b.json.type))
+  .map(b => {
+    const type = b.json.type;
+    const richText = b.json[type]?.rich_text ?? [];
+    return richText.map(t => t.plain_text).join('');
+  })
+  .filter(line => line.trim().length > 0);
+
+return [{ json: { fullText: textLines.join('\n') } }];
+```
+
+활용 예: Notion 페이지 내용을 AI로 요약
+```
+[Notion: Get Child Blocks]
+    ↓
+[Code: 블록 → 순수 텍스트 변환]
+    ↓
+[OpenAI: 3줄 요약 생성]
+    ↓
+[Slack: 요약 전송]
+```
+
+---
+
+## 에러 처리
+
+### 데이터베이스 연결 권한 오류
+
+Integration이 데이터베이스에 연결되지 않았을 때:
+
+```
+에러: "Could not find database with ID..."
+해결: Notion 데이터베이스 → ··· → Connections → Integration 추가
+```
+
+### 페이지를 찾지 못한 경우
+
+Get All 후 결과가 없으면 다음 단계를 건너뜁니다:
+
+```
+[Notion: Get All]
+  Filter: GitHub 이슈 번호 = {{ $json.issueNumber }}
+    ↓
+[IF: 페이지 존재 여부 확인]
+  Condition: {{ $input.all().length }} > 0
+  True:  → [Notion: Update Page]
+  False: → [Notion: Create Page]  ← 없으면 신규 생성
+```
+
+### 프로퍼티 타입 불일치 오류
+
+```
+에러: "body failed validation" 또는 "is not a valid..."
+원인: 프로퍼티 타입에 맞지 않는 데이터 형식
+예:  select에 배열을 넣거나, number에 문자열을 넣는 경우
+해결: 아래 프로퍼티 타입별 입력 형식 참고
+```
+
+### API 속도 제한 대응
+
+대량의 페이지를 순서대로 생성할 때:
+
+```
+[SplitInBatches: 배치 크기 5]
+    ↓
+[Notion: Create Page]
+    ↓
+[Wait: 0.5초]   ← Notion API 초당 3회 제한 방지
+```
+
+---
+
+## 실용 팁
+
+### Database ID vs Page ID 구분
+
+URL 패턴으로 구분:
+```
+데이터베이스: https://notion.so/workspace/{32자리ID}?v=...
+페이지:       https://notion.so/workspace/페이지제목-{32자리ID}
+```
+
+n8n에서는 하이픈(-) 없는 순수 32자리만 사용합니다:
+```
+1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms
+```
+
+### 한글 프로퍼티명 사용 시
+
+Notion 데이터베이스 컬럼명이 한글이면 그대로 사용 가능합니다:
+```json
+{
+  "이름": { "title": [{ "text": { "content": "홍길동" } }] },
+  "상태": { "select": { "name": "진행중" } },
+  "마감일": { "date": { "start": "2026-04-15" } }
+}
+```
+
+### 멀티셀렉트 태그 동적 추가
+
+기존 태그를 유지하면서 새 태그 추가:
+```javascript
+// Code 노드: 기존 태그 + 신규 태그 병합
+const existingTags = $('Notion: Get Page').item.json.properties['태그'].multi_select;
+const newTag = { name: $json.newLabel };
+
+// 중복 방지
+const merged = [...existingTags, newTag].filter(
+  (tag, index, arr) => arr.findIndex(t => t.name === tag.name) === index
+);
+
+return [{ json: { tags: merged } }];
+```
+
+---
+
 ## 핵심 요약
 
 - Notion Integration 생성 후 각 데이터베이스에 연결 권한 부여
 - Database ID로 특정 데이터베이스를 타깃
-- Create/Read/Update/Archive 4가지 주요 작업
-- 프로퍼티 타입에 맞는 데이터 형식 사용 필수
-- 이메일, Slack, Webhook 등 다양한 소스와 연결 가능
+- Create / Get All / Update / Archive / Get Child Blocks 5가지 주요 작업
+- 프로퍼티 타입에 맞는 데이터 형식 사용 필수 (select vs multi_select 혼동 주의)
+- Get All → IF 분기로 존재 확인 후 Create vs Update 결정
+- 대량 처리 시 SplitInBatches + Wait으로 API 속도 제한 방지
 
-**다음 레슨**: 소셜 미디어 자동 포스팅 시스템을 구현합니다.
+다음 레슨: 소셜 미디어 자동 포스팅 시스템을 구현합니다.
