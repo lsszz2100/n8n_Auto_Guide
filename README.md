@@ -35,4 +35,4 @@
 
 ---
 
-wikidocs.net에서 온라인으로 읽기: [n8n AI 자동화 가이드](https://wikidocs.net)
+wikidocs.net에서 온라인으로 읽기: [n8n AI 자동화 가이드](https://wikidocs.net/book/19485)
