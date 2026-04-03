@@ -91,6 +91,72 @@ Hello {{ $json.name }}님!
 
 ---
 
+## $env — 환경 변수 참조
+
+민감한 값(API 키, 비밀번호 등)을 코드에 하드코딩하지 않고 환경 변수로 안전하게 참조합니다.
+
+```javascript
+{{ $env.MY_API_KEY }}          // .env 파일의 MY_API_KEY 값
+{{ $env.DATABASE_URL }}        // DB 연결 문자열
+{{ $env.WEBHOOK_SECRET }}      // 웹훅 시크릿 키
+```
+
+### 환경 변수 설정 방법
+
+셀프 호스팅:
+```env
+# .env 파일
+MY_API_KEY=your-secret-key
+COMPANY_NAME=테크샵
+```
+
+n8n Cloud: Settings → Environment Variables에서 설정
+
+> $env는 n8n 인스턴스 수준의 변수입니다. 워크플로우 내에서 수정할 수 없습니다.
+
+---
+
+## $workflow — 워크플로우 정보
+
+현재 실행 중인 워크플로우의 메타데이터를 참조합니다.
+
+```javascript
+{{ $workflow.id }}             // 워크플로우 ID
+{{ $workflow.name }}           // 워크플로우 이름
+{{ $workflow.active }}         // 활성화 여부 (true/false)
+```
+
+사용 예시:
+```javascript
+// 에러 알림 메시지에 워크플로우 이름 포함
+"워크플로우 '{{ $workflow.name }}' 에서 에러가 발생했습니다"
+```
+
+---
+
+## $execution — 실행 정보
+
+현재 워크플로우 실행에 대한 정보를 참조합니다.
+
+```javascript
+{{ $execution.id }}            // 실행 ID (고유값)
+{{ $execution.mode }}          // "manual" 또는 "trigger"
+{{ $execution.resumeUrl }}     // 대기 중인 실행의 재개 URL
+```
+
+사용 예시 (감사 로그):
+```javascript
+// Code 노드에서
+const auditInfo = {
+  workflowName: $workflow.name,
+  executionId: $execution.id,
+  mode: $execution.mode,
+  timestamp: $now.toISO()
+};
+```
+
+---
+
 ## $now — 현재 시간
 
 ```javascript
@@ -201,6 +267,35 @@ n8n은 시간 처리에 Luxon 라이브러리를 사용합니다.
 {{ $json.roles.includes('admin') ? '관리자' : '일반 사용자' }}
 ```
 
+### 배열 고급 메서드
+
+표현식에서 자주 쓰이는 배열 메서드들입니다.
+
+```javascript
+// map: 각 요소를 변환
+{{ $json.orders.map(o => o.amount).join(', ') }}
+// → "15000, 32000, 8000"
+
+// filter: 조건에 맞는 요소만 추출
+{{ $json.items.filter(i => i.status === 'active').length }}
+// → 활성 항목 개수
+
+// reduce: 누적 계산
+{{ $json.orders.reduce((sum, o) => sum + o.amount, 0) }}
+// → 주문 총액
+
+// some: 하나라도 조건 만족 여부
+{{ $json.tags.some(t => t === 'vip') ? 'VIP 고객' : '일반 고객' }}
+
+// every: 모두 조건 만족 여부
+{{ $json.items.every(i => i.inStock) ? '전체 재고 있음' : '일부 품절' }}
+
+// find: 조건에 맞는 첫 번째 요소
+{{ $json.users.find(u => u.role === 'admin')?.email ?? '관리자 없음' }}
+```
+
+> 표현식이 너무 복잡해지면 Code 노드로 분리하는 것이 좋습니다.
+
 ---
 
 ## 표현식 작성 팁
@@ -256,7 +351,11 @@ n8n은 시간 처리에 Luxon 라이브러리를 사용합니다.
 - `$json`: 현재 아이템 데이터
 - `$node["이름"].json`: 특정 노드 데이터
 - `$now`: 현재 시간 (Luxon 라이브러리 사용)
+- `$env.변수명`: 환경 변수 참조 (API 키 등 민감 정보 안전 관리)
+- `$workflow.name`: 워크플로우 메타데이터 (에러 알림 등에 활용)
+- `$execution.id`: 실행 ID (감사 로그에 활용)
 - 삼항 연산자 `?:`로 조건 처리, `??`로 null 처리
+- 배열 메서드 map/filter/reduce/some/every로 고급 처리
 - 복잡한 로직은 Code 노드로 분리
 
 **다음 레슨**: JavaScript 코드를 직접 작성하는 Code(Function) 노드를 알아봅니다.

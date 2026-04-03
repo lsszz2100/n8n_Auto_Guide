@@ -266,6 +266,77 @@ LIMIT 3;
 
 ---
 
+## 도구 Description 작성 원칙
+
+AI는 도구 Description을 읽고 언제 어떤 도구를 쓸지 결정합니다. 설명이 모호하면 잘못된 도구를 선택하거나 아예 사용하지 않을 수 있습니다.
+
+### 좋은 Description vs 나쁜 Description
+
+```
+나쁜 예:
+  Name: "DB 조회"
+  Description: "데이터베이스를 조회합니다"
+
+좋은 예:
+  Name: "고객 주문 조회"
+  Description: |
+    주문 번호(예: ORD-12345) 또는 고객 이메일로 주문 정보를 조회합니다.
+    조회 가능 정보: 주문 상태, 배송 추적 번호, 결제 금액, 주문 날짜.
+    배송 관련, 주문 확인, 환불 요청 처리 시 사용하세요.
+    파라미터: orderId(주문번호) 또는 email(고객 이메일) 중 하나 필수.
+```
+
+Description 작성 4가지 요소:
+1. 무엇을 하는지 (구체적으로)
+2. 어떤 정보를 얻을 수 있는지
+3. 언제 사용해야 하는지
+4. 필요한 파라미터
+
+---
+
+## Vector Store를 도구로 연결 (RAG)
+
+AI 에이전트가 회사 내부 문서, FAQ, 제품 매뉴얼을 검색하게 하려면 Vector Store를 도구로 연결합니다.
+
+### 구조
+
+```
+[AI Agent 노드]
+  ├── Brain: Claude Sonnet 4
+  ├── Tools:
+  │   └── Vector Store Tool (내부 문서 검색)
+  │       - Supabase Vector Store
+  │       - Pinecone
+  │       - Qdrant
+  └── Memory: Window Buffer Memory
+```
+
+### 연결 방법
+
+```
+1. AI Agent 노드 → Add Tool → "Vector Store Tool" 선택
+2. 설정:
+   - Vector Store: Supabase/Pinecone/Qdrant 선택
+   - Credential: DB 접속 정보
+   - Description: "회사 제품 FAQ, 약관, 매뉴얼을 검색합니다.
+                   고객이 제품 사용법, 정책, 가격 등을 물을 때 사용하세요."
+   - Top K: 검색 결과 수 (보통 3~5개)
+```
+
+### 실전 활용 예시
+
+```
+고객: "반품 정책이 어떻게 되나요?"
+
+에이전트:
+  Thought: 반품 정책은 회사 정책 문서에서 찾을 수 있습니다.
+  Action: Vector Store Tool("반품 정책")
+  Observation: "구매 후 30일 이내, 미개봉 상품에 한해 반품 가능..."
+  Final Answer: "구매 후 30일 이내 미개봉 상품은 반품이 가능합니다..."
+```
+
+---
+
 ## 고급 설정
 
 ### Max Iterations 조정
@@ -290,7 +361,9 @@ ON: 각 도구 실행 과정도 반환 (디버깅/감사 목적)
 - AI Agent 노드 = Brain(LLM) + Tools(도구들) + Memory(기억)
 - System Message로 에이전트의 역할과 규칙 정의
 - 도구 Description이 명확할수록 AI가 올바르게 도구 선택
+  → 무엇을 하는지, 어떤 정보를 얻는지, 언제 쓰는지, 파라미터를 명시
 - HTTP Request Tool로 어떤 API든 도구로 연결 가능
+- Vector Store Tool로 내부 문서/FAQ를 에이전트 지식베이스로 활용 (RAG)
 - Max Iterations로 비용과 철저함의 균형 조절
 
 **다음 레슨**: 단순하지만 강력한 Basic LLM Chain 노드 활용법을 배웁니다.

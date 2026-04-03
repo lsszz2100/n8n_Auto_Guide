@@ -183,6 +183,81 @@ return {
 
 ---
 
+## 지수 백오프(Exponential Backoff) 재시도
+
+API 실패 시 무작정 즉시 재시도하면 서버에 부담을 줄 수 있습니다. 재시도 간격을 점점 늘리는 지수 백오프가 표준 방식입니다.
+
+```javascript
+// Code 노드: 지수 백오프 대기 시간 계산
+const retryCount = $json.retryCount || 0;
+const baseDelay = 1;      // 기본 1초
+const maxDelay = 60;      // 최대 60초
+const jitter = Math.random() * 0.3;  // 0~0.3초 랜덤 추가 (동시 재시도 방지)
+
+const delay = Math.min(
+  baseDelay * Math.pow(2, retryCount) + jitter,
+  maxDelay
+);
+
+return [{
+  json: {
+    ...$json,
+    retryDelay: delay,
+    retryCount: retryCount + 1
+  }
+}];
+```
+
+워크플로우 구성:
+```
+[HTTP Request: 실패]
+    ↓
+[Code: 지수 백오프 계산]
+  retryCount=0 → 1초 대기
+  retryCount=1 → 2초 대기
+  retryCount=2 → 4초 대기
+  retryCount=3 → 8초 대기
+    ↓
+[Wait: {{ $json.retryDelay }}초]
+    ↓
+[IF: retryCount < 5]
+  True → 재시도
+  False → Dead Letter Queue
+```
+
+---
+
+## $workflow.setStaticData() — 실행 간 상태 유지
+
+워크플로우 실행이 끝나도 데이터를 보존하고 싶을 때 사용합니다.
+
+```javascript
+// Code 노드 (Run Once for All Items)
+
+// 마지막으로 처리한 ID 저장 (증분 동기화)
+const staticData = $getWorkflowStaticData('global');
+const lastProcessedId = staticData.lastId || 0;
+
+// 새로운 데이터만 필터링
+const newItems = $input.all()
+  .filter(item => item.json.id > lastProcessedId);
+
+// 처리 후 마지막 ID 업데이트
+if (newItems.length > 0) {
+  const maxId = Math.max(...newItems.map(i => i.json.id));
+  staticData.lastId = maxId;
+}
+
+return newItems;
+```
+
+활용 사례:
+- 증분 동기화: 마지막으로 처리한 레코드 ID 기억
+- 실행 횟수 추적: 주간 누적 처리 건수
+- 임시 캐시: 자주 조회하는 설정값 저장
+
+---
+
 ## 병렬 처리 vs 순차 처리
 
 ### 순차 처리 (기본)
@@ -205,6 +280,8 @@ return {
 - Split In Batches로 대량 데이터를 배치 단위로 처리
 - Wait 노드와 함께 사용하여 Rate Limit 방지
 - 페이지네이션 API, 재시도, 상태 폴링에 루프 패턴 활용
+- 지수 백오프: 재시도 간격을 1→2→4→8초로 늘려 서버 보호
+- $getWorkflowStaticData()로 실행 간 상태(마지막 처리 ID 등) 유지
 - 무한 루프를 방지하기 위한 종료 조건과 최대 횟수 설정 필수
 
 **다음 레슨**: 워크플로우 실행을 모니터링하고 관리하는 방법을 배웁니다.
