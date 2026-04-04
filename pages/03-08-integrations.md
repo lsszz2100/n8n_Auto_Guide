@@ -170,6 +170,168 @@ API 키와 토큰은 정기적으로(분기별) 재발급받고 갱신하세요.
 
 ---
 
+## 실전 예제 1: Google Sheets + Gmail 연동
+
+**목표**: 구글 시트에 새 행이 추가되면 해당 이메일로 자동 안내 메일 발송
+
+```
+[Google Sheets Trigger: 새 행 감지]
+    ↓
+[Code: 이메일 본문 조합]
+    ↓
+[Gmail: 이메일 발송]
+    ↓
+[Google Sheets: 발송 상태 업데이트]
+```
+
+### 워크플로우 설정
+
+```
+1. Google Sheets Trigger
+   - Spreadsheet ID: [스프레드시트 ID]
+   - Sheet Name: "신청자목록"
+   - Event: Row Added
+
+2. Code 노드: 본문 생성
+```
+```javascript
+const row = $json;
+return [{
+  json: {
+    to: row['이메일'],
+    subject: `[확인] ${row['이름']}님의 신청이 접수되었습니다`,
+    body: `안녕하세요, ${row['이름']}님!\n\n신청일: ${row['신청일자']}\n내용: ${row['신청내용']}\n\n담당자가 확인 후 연락드리겠습니다.`
+  }
+}];
+```
+
+```
+3. Gmail: Send Email
+   - To: {{ $json.to }}
+   - Subject: {{ $json.subject }}
+   - Message: {{ $json.body }}
+
+4. Google Sheets: Update Row
+   - 발송상태 컬럼: "발송완료"
+   - 발송시각: {{ $now }}
+```
+
+---
+
+## 실전 예제 2: GitHub Issues + Slack 알림
+
+**목표**: 새 GitHub 이슈가 등록되면 Slack 개발팀 채널에 즉시 알림
+
+```
+[GitHub Trigger: Issue Opened]
+    ↓
+[IF: 라벨 "bug" 포함?]
+  ├── True  → [Slack: #bug-alerts 채널 긴급 알림]
+  └── False → [Slack: #dev-general 채널 일반 알림]
+```
+
+### Slack 메시지 구성
+
+```
+버그 긴급 알림 메시지:
+🚨 *새 버그 이슈 등록됨!*
+
+제목: {{ $json.issue.title }}
+등록자: {{ $json.issue.user.login }}
+라벨: {{ $json.issue.labels.map(l => l.name).join(', ') }}
+링크: {{ $json.issue.html_url }}
+
+즉시 확인 부탁드립니다.
+```
+
+---
+
+## 실전 예제 3: OpenAI + Notion 연동
+
+**목표**: Notion 데이터베이스에 새 항목이 추가되면 OpenAI로 요약 생성 후 자동 저장
+
+```
+[Notion Trigger: New Database Item]
+    ↓
+[OpenAI: 텍스트 요약 요청]
+    ↓
+[Notion: Update Page - 요약 필드에 저장]
+```
+
+### OpenAI 노드 설정
+
+```
+노드: OpenAI → Message a Model
+설정:
+  Model: gpt-4o-mini
+  Messages:
+    System: "다음 내용을 3줄 이내로 핵심만 요약해 주세요."
+    User: {{ $json.properties.Content.rich_text[0].plain_text }}
+```
+
+### Notion 업데이트 설정
+
+```
+노드: Notion → Update Page
+설정:
+  Page ID: {{ $('Notion Trigger').item.json.id }}
+  Properties:
+    Summary: {{ $json.choices[0].message.content }}
+    요약생성일: {{ $now.toISO() }}
+```
+
+---
+
+## Rate Limit 처리
+
+연동 서비스마다 API 호출 횟수 제한이 있습니다. 대량 처리 시 반드시 고려해야 합니다.
+
+### 주요 서비스 Rate Limit
+
+| 서비스 | 제한 | 대응 방법 |
+|--------|------|-----------|
+| Gmail | 250 quota/초 | Wait 노드로 간격 조절 |
+| Slack | 1 msg/초 (채널당) | 배치 처리 |
+| Notion | 3 req/초 | Wait 노드 추가 |
+| GitHub | 5000 req/시간 | 캐싱 활용 |
+| OpenAI | 모델별 상이 | 에러 재시도 로직 |
+
+### Wait 노드로 Rate Limit 회피
+
+```
+[Loop Over Items]
+    ↓
+[API 호출 노드]
+    ↓
+[Wait: 1초]   ← Rate Limit 방지
+    ↓
+[다음 반복]
+```
+
+### 429 에러 자동 재시도
+
+```javascript
+// Code 노드: 재시도 로직
+const maxRetries = 3;
+let attempt = 0;
+
+while (attempt < maxRetries) {
+  try {
+    // API 호출 로직
+    break;
+  } catch (error) {
+    if (error.message.includes('429')) {
+      attempt++;
+      await new Promise(r => setTimeout(r, 2000 * attempt)); // 점진적 대기
+    } else {
+      throw error;
+    }
+  }
+}
+```
+
+---
+
 ## 연동이 안 될 때 체크리스트
 
 1. 크리덴셜이 올바른지 확인
@@ -178,13 +340,18 @@ API 키와 토큰은 정기적으로(분기별) 재발급받고 갱신하세요.
 
 2. 권한(Scope)이 충분한지 확인
    - 필요한 API 권한이 모두 활성화되었는지
+   - Google API는 Cloud Console에서 해당 API 활성화 여부 확인
 
 3. API 제한 확인
    - 무료 플랜의 경우 API 제한이 있을 수 있음
-   - Rate Limit 초과 여부 확인
+   - Rate Limit 초과 여부 확인 (HTTP 429 응답)
 
 4. 서비스 상태 확인
    - 해당 서비스의 상태 페이지 확인 (status.slack.com 등)
+
+5. n8n 버전 호환성 확인
+   - 노드 버전이 서비스 API 버전과 맞는지 확인
+   - n8n 업데이트 후 크리덴셜 재설정 필요한 경우 있음
 
 ---
 
@@ -194,6 +361,7 @@ API 키와 토큰은 정기적으로(분기별) 재발급받고 갱신하세요.
 - OAuth2: 보안이 높고 자동 갱신 (Google, Slack 등)
 - API Key: 설정이 간단 (OpenAI, Airtable 등)
 - 최소 권한 원칙, 정기 갱신으로 보안 유지
-- 연동 문제 발생 시 크리덴셜, 권한, Rate Limit 순으로 확인
+- Rate Limit은 Wait 노드와 재시도 로직으로 대응
+- 연동 문제 발생 시 크리덴셜 → 권한 → Rate Limit 순으로 확인
 
 **다음 레슨**: 3장 핵심 내용을 정리합니다.

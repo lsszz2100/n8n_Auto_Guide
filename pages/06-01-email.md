@@ -169,6 +169,215 @@ Switch 노드:
 
 ---
 
+## 프로젝트 2: 주간 이메일 보고서 자동 생성
+
+**목표**: 매주 월요일 오전, 지난 주 이메일 통계를 팀 Slack에 자동 발송
+
+**완성 워크플로우:**
+```
+[Cron: 매주 월요일 09:00]
+    ↓
+[Gmail: 지난 7일 이메일 검색]
+    ↓
+[Code: 통계 집계]
+    ↓
+[Slack: 주간 보고서 발송]
+```
+
+### STEP 1: Cron 트리거 설정
+
+```
+노드: Schedule Trigger
+설정:
+  Mode: Custom (Cron)
+  Expression: 0 9 * * 1   (매주 월요일 오전 9시)
+```
+
+### STEP 2: Gmail 검색 쿼리
+
+```
+노드: Gmail → Get Many Messages
+설정:
+  Filters:
+    Query: after:{{ $now.minus({days: 7}).toFormat('yyyy/MM/dd') }}
+    Max Results: 500
+```
+
+### STEP 3: 통계 집계 코드
+
+```javascript
+// Code 노드: 주간 통계 집계
+const emails = $input.all();
+
+const stats = {
+  total: emails.length,
+  byDay: {},
+  topSenders: {},
+  unread: 0,
+};
+
+emails.forEach(item => {
+  const email = item.json;
+
+  // 요일별 통계
+  const date = new Date(parseInt(email.internalDate)).toLocaleDateString('ko-KR', { weekday: 'short' });
+  stats.byDay[date] = (stats.byDay[date] || 0) + 1;
+
+  // 발신자 통계
+  const sender = email.from?.value?.[0]?.address || 'unknown';
+  stats.topSenders[sender] = (stats.topSenders[sender] || 0) + 1;
+
+  // 미읽음 카운트
+  if (email.labelIds?.includes('UNREAD')) stats.unread++;
+});
+
+// 상위 5 발신자 정렬
+const topSenders = Object.entries(stats.topSenders)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 5)
+  .map(([email, count]) => `• ${email}: ${count}건`)
+  .join('\n');
+
+return [{
+  json: {
+    total: stats.total,
+    unread: stats.unread,
+    topSenders,
+    byDay: JSON.stringify(stats.byDay),
+  }
+}];
+```
+
+### STEP 4: Slack 보고서 메시지
+
+```
+노드: Slack → Send Message
+설정:
+  Channel: #team-report
+  Message:
+    📊 *주간 이메일 보고서*
+    기간: 지난 7일
+
+    - 총 수신: {{ $json.total }}건
+    - 미읽음: {{ $json.unread }}건
+
+    *상위 발신자:*
+    {{ $json.topSenders }}
+```
+
+---
+
+## 프로젝트 3: 이메일 기반 업무 할당 시스템
+
+**목표**: 특정 키워드가 포함된 이메일을 받으면 Notion 태스크 자동 생성 + 담당자 Slack DM 발송
+
+**완성 워크플로우:**
+```
+[Gmail Trigger: 라벨 "업무요청"]
+    ↓
+[Code: 담당자 결정]
+    ↓
+[Notion: 태스크 생성]
+    ↓
+[Slack: 담당자 DM 발송]
+    ↓
+[Gmail: 접수 확인 답장]
+```
+
+### 담당자 라우팅 코드
+
+```javascript
+// Code 노드: 키워드로 담당자 배정
+const subject = $json.subject || '';
+const body = $json.snippet || '';
+const text = subject + ' ' + body;
+
+const routing = [
+  { keywords: ['디자인', 'UI', '시안', '시각화'], assignee: 'design_team', slack: '@design-team' },
+  { keywords: ['개발', '버그', 'API', '오류'], assignee: 'dev_team', slack: '@dev-team' },
+  { keywords: ['결제', '환불', '청구'], assignee: 'finance_team', slack: '@finance' },
+  { keywords: ['계약', '견적', '제안서'], assignee: 'sales_team', slack: '@sales' },
+];
+
+let assigned = { assignee: 'general', slack: '@general-support' };
+
+for (const route of routing) {
+  if (route.keywords.some(kw => text.includes(kw))) {
+    assigned = { assignee: route.assignee, slack: route.slack };
+    break;
+  }
+}
+
+return [{
+  json: {
+    ...$json,
+    assignee: assigned.assignee,
+    slackMention: assigned.slack,
+    taskTitle: `[이메일 업무] ${$json.subject}`,
+    dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2일 후
+  }
+}];
+```
+
+### Notion 태스크 생성 설정
+
+```
+노드: Notion → Create Page
+설정:
+  Database ID: [업무 관리 DB ID]
+  Properties:
+    Name: {{ $json.taskTitle }}
+    담당팀: {{ $json.assignee }}
+    마감일: {{ $json.dueDate }}
+    상태: "진행중"
+    출처: "이메일"
+    발신자: {{ $json.senderEmail }}
+```
+
+---
+
+## 트러블슈팅
+
+### Gmail Trigger가 실행되지 않을 때
+
+```
+원인 1: OAuth 권한 만료
+해결: Credentials 재인증 (n8n → Credentials → Gmail → Reconnect)
+
+원인 2: Polling 간격 설정 오류
+해결: Poll Times를 "Every Minute"으로 변경 후 테스트
+
+원인 3: Gmail API 할당량 초과
+해결: Google Cloud Console → API 할당량 확인
+  일일 한도: 1,000,000 유닛
+  사용자당: 250 유닛/초
+```
+
+### 자동 답장이 무한 루프를 일으킬 때
+
+```
+문제: 자동 답장 → 상대방 자동 답장 → 반복
+해결: IF 노드 추가
+
+조건: {{ $json.subject.startsWith('Re:') === false }}
+      AND {{ $json.senderEmail !== 'noreply@' }}
+      AND {{ $json.labelIds.includes('SENT') === false }}
+```
+
+### 이메일 파싱 오류
+
+```javascript
+// 안전한 파싱 패턴 (null 체크 필수)
+const senderEmail = email.from?.value?.[0]?.address
+  ?? email.from?.text?.match(/[\w.-]+@[\w.-]+/)?.[0]
+  ?? 'unknown@unknown.com';
+
+const subject = email.subject || '(제목 없음)';
+const body = email.text || email.snippet || '';
+```
+
+---
+
 ## 핵심 요약
 
 - Gmail Trigger로 실시간 이메일 감지
@@ -176,5 +385,7 @@ Switch 노드:
 - Switch로 VIP/일반/스팸 각각 다르게 처리
 - 자동 답장으로 고객 응답 시간 즉시 단축
 - Google Sheets 로그로 모든 문의 추적
+- 주간 통계 자동 집계로 팀 가시성 확보
+- 키워드 기반 담당자 자동 배정으로 업무 분배 자동화
 
 **다음 레슨**: Slack 봇을 만들어 팀 업무를 자동화합니다.

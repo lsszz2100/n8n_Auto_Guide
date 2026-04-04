@@ -172,6 +172,103 @@ Schedule로 트리거하되, 특정 조건에서만 실제 처리:
 
 ---
 
+## 실전 예제: 완전한 Webhook 주문 처리 시스템
+
+**목표**: 외부 쇼핑몰에서 주문 발생 → n8n Webhook → 전체 처리 자동화
+
+### 1단계: Webhook URL 발급 및 설정
+
+```
+n8n에서:
+1. 새 워크플로우 생성
+2. Webhook Trigger 노드 추가
+3. HTTP Method: POST
+4. Path: shop-order
+5. Authentication: Header Auth
+   - Header Name: X-Shop-Secret
+   - Header Value: [임의의 강력한 비밀키]
+6. 테스트 URL 복사:
+   https://your-n8n.com/webhook-test/shop-order
+```
+
+### 2단계: 외부 쇼핑몰에서 Webhook 등록
+
+```javascript
+// 쇼핑몰 주문 완료 시 호출 예시 (Node.js)
+const axios = require('axios');
+
+async function notifyN8n(orderData) {
+  await axios.post('https://your-n8n.com/webhook/shop-order', {
+    orderId: orderData.id,
+    customer: {
+      name: orderData.customerName,
+      email: orderData.customerEmail,
+    },
+    items: orderData.items,
+    totalAmount: orderData.total,
+    timestamp: new Date().toISOString(),
+  }, {
+    headers: { 'X-Shop-Secret': process.env.N8N_WEBHOOK_SECRET }
+  });
+}
+```
+
+### 3단계: 완성 워크플로우
+
+```
+[Webhook: 주문 접수]
+    ↓
+[Code: 데이터 검증 및 정리]
+    ↓
+[IF: 금액 10만원 이상?]
+  ├── True  → [Slack: #vip-orders 알림]
+  │              ↓
+  │           [Gmail: VIP 특별 확인 이메일]
+  └── False → [Gmail: 일반 주문 확인 이메일]
+    ↓
+[Google Sheets: 주문 내역 기록]
+    ↓
+[Respond to Webhook: {"success": true, "orderId": "..."}]
+```
+
+---
+
+## Gmail Polling → Pub/Sub Webhook 전환 방법
+
+n8n Cloud 사용 횟수를 93% 절약하는 방법입니다.
+
+### 기존 방식 (Polling)
+
+```
+Gmail Trigger (5분마다 폴링) → 이메일 처리
+문제: 이메일이 없어도 매 5분마다 실행됨
+```
+
+### 개선 방식 (Google Pub/Sub)
+
+```
+Gmail → Google Pub/Sub → n8n Webhook → 이메일 처리
+효과: 이메일이 실제로 도착했을 때만 실행
+```
+
+### Pub/Sub 설정 단계
+
+```
+1. Google Cloud Console → Pub/Sub → 주제 생성
+   주제 이름: gmail-notifications
+
+2. Gmail API → Watch 설정 (Apps Script 또는 API 직접):
+   POST https://gmail.googleapis.com/gmail/v1/users/me/watch
+   Body: {
+     "topicName": "projects/your-project/topics/gmail-notifications",
+     "labelIds": ["INBOX"]
+   }
+
+3. n8n Webhook으로 Pub/Sub 메시지 수신 처리
+```
+
+---
+
 ## 핵심 요약
 
 - Schedule: Cron 표현식으로 정밀한 실행 타이밍 제어
@@ -179,5 +276,6 @@ Schedule로 트리거하되, 특정 조건에서만 실제 처리:
 - Polling → Webhook 전환으로 실행 횟수 대폭 절약
 - 공통 로직은 Sub-Workflow로 분리하여 여러 트리거에서 재사용
 - 중복 처리 방지 패턴으로 안정성 향상
+- Webhook 응답을 커스터마이즈해 발신 서비스에 결과 전달 가능
 
 **다음 레슨**: IF와 Switch로 복잡한 조건 처리를 마스터합니다.

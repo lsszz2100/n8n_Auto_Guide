@@ -189,6 +189,183 @@ Gmail → (새 이메일 도착 즉시) → n8n에 POST 요청 전송
 
 ---
 
+## 실전 예제 1: Webhook으로 외부 폼 연동
+
+**목표**: 구글 폼, Typeform 등 외부 폼 제출 시 n8n으로 데이터 전송
+
+### Webhook Trigger 설정
+
+```
+1. n8n에서 Webhook Trigger 노드 추가
+2. HTTP Method: POST
+3. Path: form-submit
+4. Response Mode: Immediately
+
+생성된 URL 예시:
+https://your-n8n.com/webhook/form-submit
+```
+
+### 외부 서비스에서 Webhook 등록
+
+```
+Google Form (Apps Script로 연결):
+function onFormSubmit(e) {
+  const payload = {
+    name: e.values[1],
+    email: e.values[2],
+    message: e.values[3],
+    timestamp: new Date().toISOString()
+  };
+  UrlFetchApp.fetch('https://your-n8n.com/webhook/form-submit', {
+    method: 'POST',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload)
+  });
+}
+```
+
+### 받은 데이터 처리
+
+```
+[Webhook Trigger]
+    ↓ (수신: { name, email, message, timestamp })
+[Gmail: 접수 확인 이메일 발송]
+    ↓
+[Google Sheets: 신청자 목록에 행 추가]
+    ↓
+[Slack: #leads 채널에 알림]
+```
+
+---
+
+## 실전 예제 2: Schedule Trigger 실무 패턴
+
+### 패턴 1: 매일 오전 업무 브리핑
+
+```
+Cron: 0 8 * * 1-5   (평일 오전 8시)
+
+[Schedule Trigger]
+    ↓
+[Google Calendar: 오늘 일정 조회]
+    ↓
+[Gmail: 미답장 이메일 조회]
+    ↓
+[Code: 브리핑 메시지 조합]
+    ↓
+[Slack DM: 본인에게 발송]
+```
+
+### 패턴 2: 매시간 데이터 동기화
+
+```
+Cron: 0 * * * *   (매시간 정각)
+
+[Schedule Trigger]
+    ↓
+[HTTP Request: 외부 API에서 최신 데이터 수신]
+    ↓
+[IF: 변경사항 있음?]
+  ├── True  → [Airtable: 레코드 업데이트]
+  └── False → (종료)
+```
+
+### 패턴 3: 월말 정산 자동화
+
+```
+Cron: 0 9 28-31 * *   (매월 28~31일 오전 9시)
+
+[Schedule Trigger]
+    ↓
+[IF: 오늘이 해당 월 마지막 날?]
+    ↓
+[Google Sheets: 월간 데이터 집계]
+    ↓
+[Gmail: 정산 보고서 발송]
+```
+
+---
+
+## Webhook 보안 설정
+
+외부에서 호출 가능한 Webhook은 보안이 중요합니다.
+
+### 방법 1: Header Auth
+
+```
+Webhook Trigger 설정:
+  Authentication: Header Auth
+  Header Name: X-Webhook-Secret
+  Header Value: my-secret-key-1234
+
+외부 서비스 호출 시:
+  Headers: { "X-Webhook-Secret": "my-secret-key-1234" }
+```
+
+### 방법 2: Basic Auth
+
+```
+Webhook Trigger 설정:
+  Authentication: Basic Auth
+  Username: n8n
+  Password: [강력한 비밀번호]
+
+URL 형식: https://user:pass@your-n8n.com/webhook/path
+```
+
+### 방법 3: 서명 검증 (HMAC)
+
+```javascript
+// Code 노드: 서명 유효성 검증
+const crypto = require('crypto');
+const secret = 'your-webhook-secret';
+const signature = $json.headers['x-signature'];
+const body = JSON.stringify($json.body);
+
+const expectedSig = crypto
+  .createHmac('sha256', secret)
+  .update(body)
+  .digest('hex');
+
+if (signature !== `sha256=${expectedSig}`) {
+  throw new Error('Invalid webhook signature');
+}
+```
+
+---
+
+## 트리거 디버깅
+
+### Webhook이 실행되지 않을 때
+
+```
+체크 1: 워크플로우가 활성화되어 있는가?
+  → 프로덕션 URL은 활성화 필수
+  → 테스트 URL은 비활성화 상태에서도 동작
+
+체크 2: URL이 올바른가?
+  → 테스트 URL vs 프로덕션 URL 혼동 여부 확인
+
+체크 3: Content-Type 헤더 확인
+  → POST 요청 시 Content-Type: application/json 필요
+
+체크 4: n8n 서버 방화벽/포트 개방 여부
+  → 외부에서 접근 가능한지 확인
+```
+
+### Schedule Trigger가 실행되지 않을 때
+
+```
+체크 1: 워크플로우 활성화 여부
+체크 2: Timezone 설정 확인
+  → n8n Settings → Timezone이 올바른지
+  → 한국 시간: Asia/Seoul
+체크 3: 서버 시간 동기화 여부
+  → 서버 NTP 동기화 상태 확인
+```
+
+---
+
 ## 핵심 요약
 
 - Manual: 테스트용, 수동 실행
@@ -196,5 +373,7 @@ Gmail → (새 이메일 도착 즉시) → n8n에 POST 요청 전송
 - Webhook: 외부 서비스 이벤트 수신, 실시간
 - 앱별 트리거: Gmail, Slack 등 특정 서비스 전용
 - Webhook이 Polling보다 효율적이지만 서비스 지원 필요
+- Webhook 보안은 Header Auth 또는 HMAC 서명으로 강화
+- 프로덕션 Webhook URL은 반드시 워크플로우 활성화 필요
 
 **다음 레슨**: Set, Code, HTTP Request 등 핵심 노드들을 상세히 알아봅니다.

@@ -192,11 +192,170 @@ const statusCode = $json.error?.statusCode || 0;
 
 ---
 
+## 실전 예제: 외부 API 호출 완전 에러 처리
+
+API 호출에서 발생하는 다양한 에러를 실전에서 처리하는 완전한 예제입니다.
+
+### 완성 워크플로우
+
+```
+[HTTP Request: 결제 API]
+    ├── 성공 → [결제 완료 처리] → [Gmail: 영수증 발송]
+    └── 에러 → [Code: 에러 분류]
+                  ├── 일시적 오류 (429, 503) → [Wait: 10초] → [HTTP Request: 재시도]
+                  ├── 인증 오류 (401, 403)   → [Slack: 운영팀 즉시 알림]
+                  └── 데이터 오류 (400, 422) → [Google Sheets: 실패 로그] → [Gmail: 처리 실패 안내]
+```
+
+### 에러 분류 코드
+
+```javascript
+// Code 노드: HTTP 상태 코드로 에러 유형 분류
+const error = $json.error || {};
+const statusCode = error.statusCode || error.code || 0;
+
+let errorType, shouldRetry, notifyOps;
+
+if ([429, 503, 504].includes(statusCode)) {
+  errorType = 'temporary';   // 일시적 오류 - 재시도 가능
+  shouldRetry = true;
+  notifyOps = false;
+} else if ([401, 403].includes(statusCode)) {
+  errorType = 'auth';        // 인증 오류 - 즉시 운영팀 알림
+  shouldRetry = false;
+  notifyOps = true;
+} else if ([400, 422].includes(statusCode)) {
+  errorType = 'data';        // 데이터 오류 - 요청 데이터 확인 필요
+  shouldRetry = false;
+  notifyOps = false;
+} else {
+  errorType = 'unknown';
+  shouldRetry = false;
+  notifyOps = true;
+}
+
+return [{
+  json: {
+    ...$json,
+    errorType,
+    shouldRetry,
+    notifyOps,
+    statusCode,
+    errorMessage: error.message || '알 수 없는 오류',
+  }
+}];
+```
+
+### Switch로 에러 유형별 분기
+
+```
+Switch 노드:
+  Field: {{ $json.errorType }}
+  Case 1: "temporary" → Wait + 재시도 경로
+  Case 2: "auth"      → 운영팀 알림 경로
+  Case 3: "data"      → 실패 로그 경로
+  Default: 알 수 없는 오류 경로
+```
+
+---
+
+## 실전 예제: Dead Letter Queue 구현
+
+처리 실패한 데이터를 안전하게 보관하고 나중에 재처리하는 패턴입니다.
+
+### Dead Letter Queue 워크플로우
+
+```
+[에러 출력]
+    ↓
+[Code: 실패 레코드 구성]
+    ↓
+[Google Sheets: "실패 큐" 시트에 기록]
+    ↓
+[Slack: 일일 실패 건수 알림]
+```
+
+### 실패 레코드 구성 코드
+
+```javascript
+// Code 노드: 재처리 가능한 형태로 실패 기록
+const originalData = $json;
+
+return [{
+  json: {
+    id: `fail_${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    workflowName: $workflow.name,
+    errorMessage: originalData.error?.message || '알 수 없는 오류',
+    originalPayload: JSON.stringify(originalData),
+    retryCount: 0,
+    status: 'pending',        // pending / retrying / resolved / abandoned
+    resolvedAt: null,
+  }
+}];
+```
+
+### 재처리 워크플로우 (수동 실행용)
+
+```
+[Manual Trigger]
+    ↓
+[Google Sheets: status="pending" 행 조회]
+    ↓
+[Loop Over Items: 각 실패 건 처리]
+    ├── [Code: originalPayload 파싱]
+    ├── [HTTP Request: 원래 API 재호출]
+    ├── 성공 → [Google Sheets: status="resolved" 업데이트]
+    └── 실패 → [Google Sheets: retryCount+1, status="abandoned" (3회 초과)]
+```
+
+---
+
+## 자주 발생하는 에러 케이스
+
+### Case 1: API Rate Limit (429)
+
+```
+증상: "Too Many Requests" 에러, 429 상태 코드
+원인: 짧은 시간에 너무 많은 API 호출
+
+해결:
+1. HTTP Request 노드 → Retry on Fail: 활성화
+2. Wait Between Tries: 60000 (1분)
+3. 또는 Loop 앞에 Wait 노드 추가 (1~2초)
+```
+
+### Case 2: OAuth 토큰 만료
+
+```
+증상: "Unauthorized" 또는 "Token expired" 에러
+원인: OAuth 액세스 토큰 만료 (보통 1시간)
+
+해결:
+1. n8n은 대부분의 OAuth를 자동 갱신함
+2. 자동 갱신 실패 시: Credentials → 해당 서비스 → Reconnect
+3. 장기 미사용 후 재시작 시 발생 빈번
+```
+
+### Case 3: null/undefined 데이터
+
+```
+증상: "Cannot read property of undefined" 에러
+원인: 예상한 필드가 없는 데이터가 들어옴
+
+해결 (방어적 코딩):
+const value = $json?.nested?.field ?? '기본값';
+// Optional chaining (?.) + Nullish coalescing (??) 사용
+```
+
+---
+
 ## 핵심 요약
 
 - 에러 처리 방법 3가지: Stop, Continue, Continue with Error Output
 - Error Trigger: 워크플로우 전체 에러를 캐치하는 별도 워크플로우
 - 자동 재시도: Max Tries + Wait Between Tries 설정
+- HTTP 상태 코드로 에러 유형 분류 후 유형별 대응
 - 실패 데이터를 Dead Letter Queue에 보관하여 나중에 재처리
 - 유용한 에러 알림에는 시간, 위치, 내용, 영향, 조치방법 포함
 
